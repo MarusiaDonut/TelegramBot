@@ -7,9 +7,9 @@ using Npgsql;
 using Npgsql.Internal;
 using System.Xml.Linq;
 using System;
+using TelegramBot.mainButtons;
 
-
-namespace TelegramBot
+namespace TelegramBot.telegram
 {
     public class TelegramBotService
     {
@@ -19,6 +19,7 @@ namespace TelegramBot
 
         private static StyleOfSwimming? _styleOfSwimming;
         private static TablesRank? _tablesRank;
+        private static WorkoutRecording? _workoutRecording;
 
         public TelegramBotService(ITelegramBotClient botClient, NpgsqlConnection connection)
         {
@@ -32,7 +33,7 @@ namespace TelegramBot
             {
                 var message = update.Message;
 
-               
+
                 switch (update.Type)
                 {
 
@@ -40,13 +41,12 @@ namespace TelegramBot
                         _connection.Open();
                         Console.WriteLine("Соединение с БД открыто");
 
-                        NpgsqlCommand npgSqlCommand = new NpgsqlCommand($"SELECT id_user FROM test WHERE id_user = {message.From.Id}", _connection);
+                        NpgsqlCommand npgSqlCommand = new NpgsqlCommand($"SELECT id FROM users WHERE id = {message.From.Id}", _connection);
                         var idUser = npgSqlCommand.ExecuteScalar();
 
-                        if ((int)idUser != message.From.Id)
+                        if (idUser == null)
                         {
-                           
-                            npgSqlCommand = new NpgsqlCommand($"INSERT INTO test (id_user, name) VALUES('{message.From.Id}', '{message.From.FirstName}')", _connection);
+                            npgSqlCommand = new NpgsqlCommand($"INSERT INTO users (id, name) VALUES('{message.From.Id}', '{message.From.FirstName}')", _connection);
                             npgSqlCommand.ExecuteNonQuery();
                         }
 
@@ -62,15 +62,25 @@ namespace TelegramBot
                         break;
 
                     case UpdateType.CallbackQuery:
-                        if (_styleOfSwimming == null && _tablesRank == null)
-                            return;
+
                         if (_styleOfSwimming != null)
                         {
                             await _styleOfSwimming.OnAnswer(update);
+                            _styleOfSwimming = null;
                         }
                         if (_tablesRank != null)
                         {
                             await _tablesRank.OnAnswer(update);
+                            _tablesRank = null;
+                        }
+                        if (_workoutRecording != null)
+                        {
+                            await _workoutRecording.OnAnswer(update);
+                            _workoutRecording = null;
+                        }
+                        else
+                        {
+                            return;
                         }
                         break;
                 }
@@ -153,7 +163,7 @@ namespace TelegramBot
                         text: "Выберите интересующий чемпионат:",
                         replyMarkup: inlineKeyboardRecords,
                         cancellationToken: cancellationToken);
-                        break;
+                    break;
                 case "Таблица разрядов‍ 📄":
                     _tablesRank = new TablesRank(_botClient, message.Chat, _connection);
                     await _tablesRank.HandleTablesRank();
@@ -165,19 +175,23 @@ namespace TelegramBot
                 case "Полезные статьи о плавании ❗":
                     await _botClient.SendLocationAsync(
                         chatId: chatId,
-                        latitude: message.Location.Latitude, 
+                        latitude: message.Location.Latitude,
                         longitude: message.Location.Longitude,
                         cancellationToken: cancellationToken
                     );
                     break;
                 case "Дневник тренировок 📖":
-                    await _botClient.SendTextMessageAsync(
-                        chatId: chatId,
-                        text: "Запишите свою тренировку:",
-                        cancellationToken: cancellationToken
-                        );
+                    _workoutRecording = new WorkoutRecording(_botClient, message.Chat, _connection, message);
+                    await _workoutRecording.HandleWorkoutRecording();
                     break;
-
+                default:
+                    if (message.Text != null)
+                    {
+                        _workoutRecording = new WorkoutRecording(_botClient, message.Chat, _connection, message);
+                        string text = message.Text.ToLower();
+                        await _workoutRecording.GetText(text);
+                    }
+                    break;
             }
         }
 

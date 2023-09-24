@@ -9,7 +9,7 @@ using Telegram.Bot;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace TelegramBot
+namespace TelegramBot.mainButtons
 {
 
     internal class TablesRank
@@ -51,7 +51,7 @@ namespace TelegramBot
             switch (update.CallbackQuery.Data)
             {
                 case "1":
-                    NpgsqlCommand npgSqlCommand = new NpgsqlCommand($"SELECT path_table FROM rank WHERE id = {update.CallbackQuery.Data}", _connection);
+                    NpgsqlCommand npgSqlCommand = new NpgsqlCommand($"SELECT path_table FROM rank WHERE id_rank = {update.CallbackQuery.Data}", _connection);
                     var pathPhoto = npgSqlCommand.ExecuteScalar();
                     using (var fileStream = new FileStream((string)pathPhoto, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
@@ -62,11 +62,11 @@ namespace TelegramBot
                         );
                     }
                     await _botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, "");
-                   
+
 
                     break;
                 case "2":
-                    npgSqlCommand = new NpgsqlCommand($"SELECT path_table FROM rank WHERE id = {update.CallbackQuery.Data}", _connection);
+                    npgSqlCommand = new NpgsqlCommand($"SELECT path_table FROM rank WHERE id_rank = {update.CallbackQuery.Data}", _connection);
                     pathPhoto = npgSqlCommand.ExecuteScalar();
                     using (var fileStream = new FileStream((string)pathPhoto, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {

@@ -13,7 +13,7 @@ using Telegram.Bot.Types.Enums;
 using System.IO;
 using Npgsql;
 
-namespace TelegramBot
+namespace TelegramBot.mainButtons
 {
     internal class StyleOfSwimming
     {
@@ -62,12 +62,12 @@ namespace TelegramBot
             switch (update.CallbackQuery.Data)
             {
                 case "1":
-                    NpgsqlCommand npgSqlCommand = new NpgsqlCommand($"SELECT info FROM styles WHERE id = {update.CallbackQuery.Data}", _connection);
+                    NpgsqlCommand npgSqlCommand = new NpgsqlCommand($"SELECT info FROM styles WHERE id_style = {update.CallbackQuery.Data}", _connection);
                     var info = npgSqlCommand.ExecuteScalar();
                     await _botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, "");
                     await _botClient.SendTextMessageAsync(_chat.Id,
                             (string)info);
-                    npgSqlCommand = new NpgsqlCommand($"SELECT path_photo FROM styles WHERE id = {update.CallbackQuery.Data}", _connection);
+                    npgSqlCommand = new NpgsqlCommand($"SELECT path_video FROM styles WHERE id_style = {update.CallbackQuery.Data}", _connection);
                     var pathPhoto = npgSqlCommand.ExecuteScalar();
                     using (var fileStream = new FileStream((string)pathPhoto, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
@@ -80,12 +80,12 @@ namespace TelegramBot
 
                     break;
                 case "2":
-                    npgSqlCommand = new NpgsqlCommand($"SELECT info FROM styles WHERE id = {update.CallbackQuery.Data}", _connection);
+                    npgSqlCommand = new NpgsqlCommand($"SELECT info FROM styles WHERE id_style = {update.CallbackQuery.Data}", _connection);
                     info = npgSqlCommand.ExecuteScalar();
                     await _botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, "");
                     await _botClient.SendTextMessageAsync(_chat.Id,
                             (string)info);
-                    npgSqlCommand = new NpgsqlCommand($"SELECT path_photo FROM styles WHERE id = {update.CallbackQuery.Data}", _connection);
+                    npgSqlCommand = new NpgsqlCommand($"SELECT path_video FROM styles WHERE id_style = {update.CallbackQuery.Data}", _connection);
                     pathPhoto = npgSqlCommand.ExecuteScalar();
                     using (var fileStream = new FileStream((string)pathPhoto, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
@@ -98,12 +98,12 @@ namespace TelegramBot
 
                     break;
                 case "3":
-                    npgSqlCommand = new NpgsqlCommand($"SELECT info FROM styles WHERE id = {update.CallbackQuery.Data}", _connection);
+                    npgSqlCommand = new NpgsqlCommand($"SELECT info FROM styles WHERE id_style = {update.CallbackQuery.Data}", _connection);
                     info = npgSqlCommand.ExecuteScalar();
                     await _botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, "");
                     await _botClient.SendTextMessageAsync(_chat.Id,
                             (string)info);
-                    npgSqlCommand = new NpgsqlCommand($"SELECT path_photo FROM styles WHERE id = {update.CallbackQuery.Data}", _connection);
+                    npgSqlCommand = new NpgsqlCommand($"SELECT path_video FROM styles WHERE id_style = {update.CallbackQuery.Data}", _connection);
                     pathPhoto = npgSqlCommand.ExecuteScalar();
                     using (var fileStream = new FileStream((string)pathPhoto, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
@@ -116,12 +116,12 @@ namespace TelegramBot
 
                     break;
                 case "4":
-                    npgSqlCommand = new NpgsqlCommand($"SELECT info FROM styles WHERE id = {update.CallbackQuery.Data}", _connection);
+                    npgSqlCommand = new NpgsqlCommand($"SELECT info FROM styles WHERE id_style = {update.CallbackQuery.Data}", _connection);
                     info = npgSqlCommand.ExecuteScalar();
                     await _botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, "");
                     await _botClient.SendTextMessageAsync(_chat.Id,
                             (string)info);
-                    npgSqlCommand = new NpgsqlCommand($"SELECT path_photo FROM styles WHERE id = {update.CallbackQuery.Data}", _connection);
+                    npgSqlCommand = new NpgsqlCommand($"SELECT path_video FROM styles WHERE id_style = {update.CallbackQuery.Data}", _connection);
                     pathPhoto = npgSqlCommand.ExecuteScalar();
                     using (var fileStream = new FileStream((string)pathPhoto, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
