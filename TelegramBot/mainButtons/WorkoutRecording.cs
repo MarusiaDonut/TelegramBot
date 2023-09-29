@@ -47,30 +47,38 @@ namespace TelegramBot.mainButtons
 
         internal async Task OnAnswer(Update update)
         {
-            //_connection.Open();
+            _connection.Open();
             switch (update.CallbackQuery.Data)
             {
                 case "1":
                     await _botClient.SendTextMessageAsync(_chat.Id,
-                            "Введите разминку одним сообщением.");
-
-                    //await GetText(update);
-                    await _botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, "Вы ввели разминку. Введите основное задание одним сообщением");
-                    //await _botClient.SendTextMessageAsync(_chat.Id,
-                    //        "Вы ввели разминку. Введите основное задание одним сообщением");
+                            "Введите тренировку одним сообщением.");
                     break;
                 case "2":
+                    await _botClient.SendTextMessageAsync(_chat.Id,
+                           "Введите дату тренировки в формате ДД месяц");
                     break;
             }
-
-
-            //_connection.Close();
+            _connection.Close();
         }
 
-        internal async Task GetText(string message)
+        internal async Task GetTextWorkout(string message)
         {
-            await Console.Out.WriteLineAsync(message);
+            //await Console.Out.WriteLineAsync(message);
+            var date = DateTime.Now;
+            NpgsqlCommand npgSqlCommand = new NpgsqlCommand($"INSERT INTO workout (id_user, text, date) VALUES('{_message.From.Id}', '{message}', '{date:M}')", _connection);
+            npgSqlCommand.ExecuteNonQuery();
         }
+
+        internal async Task GetDateWorkout(string date)
+        {
+            NpgsqlCommand npgSqlCommand = new NpgsqlCommand($"SELECT text FROM workout WHERE id_user = {_message.From.Id} and date = {date}", _connection);
+            var text = npgSqlCommand.ExecuteScalar();
+            await _botClient.SendTextMessageAsync(_chat.Id,
+                            (string)text);
+            //await Console.Out.WriteLineAsync((string?)text);
+        }
+        
 
     }
 }

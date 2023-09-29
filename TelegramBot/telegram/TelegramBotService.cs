@@ -8,6 +8,7 @@ using Npgsql.Internal;
 using System.Xml.Linq;
 using System;
 using TelegramBot.mainButtons;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace TelegramBot.telegram
 {
@@ -20,6 +21,8 @@ namespace TelegramBot.telegram
         private static StyleOfSwimming? _styleOfSwimming;
         private static TablesRank? _tablesRank;
         private static WorkoutRecording? _workoutRecording;
+        private static Records? _records;
+        private static LocationPool? _locationPool;
 
         public TelegramBotService(ITelegramBotClient botClient, NpgsqlConnection connection)
         {
@@ -32,8 +35,6 @@ namespace TelegramBot.telegram
             try
             {
                 var message = update.Message;
-
-
                 switch (update.Type)
                 {
 
@@ -50,14 +51,18 @@ namespace TelegramBot.telegram
                             npgSqlCommand.ExecuteNonQuery();
                         }
 
-                        if (message.Text.StartsWith("/"))
+                        if (message.Text != null)
                         {
-                            await HandleCommandsSlesh(message.Chat.Id, message.Text, message, cancellationToken);
+                            if (message.Text.StartsWith("/"))
+                            {
+                                await HandleCommandsSlesh(message.Chat.Id, message.Text, message, cancellationToken);
+                            }
+                            else
+                            {
+                                await HandleCommands(message.Chat.Id, message.Text, message, cancellationToken);
+                            }
                         }
-                        else
-                        {
-                            await HandleCommands(message.Chat.Id, message.Text, message, cancellationToken);
-                        }
+
                         _connection.Close();
                         break;
 
@@ -104,7 +109,7 @@ namespace TelegramBot.telegram
                 new[]
                 {
                     new KeyboardButton("Стили плавания 🏊"),
-                    new KeyboardButton("‍Полезные статьи о плавании ❗"),
+                    new KeyboardButton("‍Найти ближайщий бассейн ❗"),
                 },
                 new[]
                 {
@@ -139,57 +144,43 @@ namespace TelegramBot.telegram
 
         private async Task HandleCommands(long chatId, string command, Message message, CancellationToken cancellationToken)
         {
-            var inlineKeyboardRecords = new InlineKeyboardMarkup(new[]
-             {
-                new[]
-                {
-                    InlineKeyboardButton.WithCallbackData(text: "Чемпионат России", callbackData: "1"),
-                },
-                new[]
-                {
-                    InlineKeyboardButton.WithCallbackData(text: "Чемпионат Европы", callbackData: "2"),
-                },
-                new[]
-                {
-                    InlineKeyboardButton.WithCallbackData(text: "Чемпионат мира", callbackData: "3"),
-                }
-            });
 
             switch (command)
             {
                 case "Рекорды в мире плавания 🏆":
-                    await _botClient.SendTextMessageAsync(
-                        chatId: chatId,
-                        text: "Выберите интересующий чемпионат:",
-                        replyMarkup: inlineKeyboardRecords,
-                        cancellationToken: cancellationToken);
+                    _records = new Records(_botClient, message.Chat, _connection);
+                    await _records.HandleRecords();
                     break;
+
                 case "Таблица разрядов‍ 📄":
                     _tablesRank = new TablesRank(_botClient, message.Chat, _connection);
                     await _tablesRank.HandleTablesRank();
                     break;
+
                 case "Стили плавания 🏊":
                     _styleOfSwimming = new StyleOfSwimming(_botClient, message.Chat, _connection);
                     await _styleOfSwimming.HandleStylesOfSwimming();
                     break;
-                case "Полезные статьи о плавании ❗":
-                    await _botClient.SendLocationAsync(
-                        chatId: chatId,
-                        latitude: message.Location.Latitude,
-                        longitude: message.Location.Longitude,
-                        cancellationToken: cancellationToken
-                    );
+
+                case "‍Найти ближайщий бассейн ❗":
+                    _locationPool = new LocationPool(_botClient, message.Chat, _connection, message);
+                    await _locationPool.HandleLocationPool();
                     break;
+
                 case "Дневник тренировок 📖":
                     _workoutRecording = new WorkoutRecording(_botClient, message.Chat, _connection, message);
                     await _workoutRecording.HandleWorkoutRecording();
                     break;
                 default:
-                    if (message.Text != null)
+                    if (message.Text != null && _workoutRecording != null)
                     {
                         _workoutRecording = new WorkoutRecording(_botClient, message.Chat, _connection, message);
-                        string text = message.Text.ToLower();
-                        await _workoutRecording.GetText(text);
+
+                        await _workoutRecording.GetTextWorkout(message.Text.ToLower());
+
+                        await _workoutRecording.GetDateWorkout(message.Text.ToLower());
+
+                        _workoutRecording = null;
                     }
                     break;
             }
