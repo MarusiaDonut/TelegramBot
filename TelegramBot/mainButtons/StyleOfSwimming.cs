@@ -58,81 +58,43 @@ namespace TelegramBot.mainButtons
 
         internal async Task OnAnswer(Update update)
         {
-            _connection.Open();
+
             switch (update.CallbackQuery.Data)
             {
                 case "1":
-                    NpgsqlCommand npgSqlCommand = new NpgsqlCommand($"SELECT info FROM styles WHERE id_style = {update.CallbackQuery.Data}", _connection);
-                    var info = npgSqlCommand.ExecuteScalar();
-                    await _botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, "");
-                    await _botClient.SendTextMessageAsync(_chat.Id,
-                            (string)info);
-                    npgSqlCommand = new NpgsqlCommand($"SELECT path_video FROM styles WHERE id_style = {update.CallbackQuery.Data}", _connection);
-                    var pathPhoto = npgSqlCommand.ExecuteScalar();
-                    using (var fileStream = new FileStream((string)pathPhoto, FileMode.Open, FileAccess.Read, FileShare.Read))
-                    {
-                        await _botClient.SendVideoAsync(
-                            chatId: _chat.Id,
-                            video: new InputFileStream(fileStream),
-                            caption: "Техника плавания вольным стилем"
-                        );
-                    }
-
+                    await Style(update.CallbackQuery.Data, "Техника плавания вольным стилем");
                     break;
                 case "2":
-                    npgSqlCommand = new NpgsqlCommand($"SELECT info FROM styles WHERE id_style = {update.CallbackQuery.Data}", _connection);
-                    info = npgSqlCommand.ExecuteScalar();
-                    await _botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, "");
-                    await _botClient.SendTextMessageAsync(_chat.Id,
-                            (string)info);
-                    npgSqlCommand = new NpgsqlCommand($"SELECT path_video FROM styles WHERE id_style = {update.CallbackQuery.Data}", _connection);
-                    pathPhoto = npgSqlCommand.ExecuteScalar();
-                    using (var fileStream = new FileStream((string)pathPhoto, FileMode.Open, FileAccess.Read, FileShare.Read))
-                    {
-                        await _botClient.SendVideoAsync(
-                            chatId: _chat.Id,
-                            video: new InputFileStream(fileStream),
-                            caption: "Техника плавания на спине"
-                        );
-                    }
-
+                    await Style(update.CallbackQuery.Data, "Техника плавания на спине");
                     break;
                 case "3":
-                    npgSqlCommand = new NpgsqlCommand($"SELECT info FROM styles WHERE id_style = {update.CallbackQuery.Data}", _connection);
-                    info = npgSqlCommand.ExecuteScalar();
-                    await _botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, "");
-                    await _botClient.SendTextMessageAsync(_chat.Id,
-                            (string)info);
-                    npgSqlCommand = new NpgsqlCommand($"SELECT path_video FROM styles WHERE id_style = {update.CallbackQuery.Data}", _connection);
-                    pathPhoto = npgSqlCommand.ExecuteScalar();
-                    using (var fileStream = new FileStream((string)pathPhoto, FileMode.Open, FileAccess.Read, FileShare.Read))
-                    {
-                        await _botClient.SendVideoAsync(
-                            chatId: _chat.Id,
-                            video: new InputFileStream(fileStream),
-                            caption: "Техника плавания брассом"
-                        );
-                    }
-
+                    await Style(update.CallbackQuery.Data, "Техника плавания брассом");
                     break;
                 case "4":
-                    npgSqlCommand = new NpgsqlCommand($"SELECT info FROM styles WHERE id_style = {update.CallbackQuery.Data}", _connection);
-                    info = npgSqlCommand.ExecuteScalar();
-                    await _botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, "");
-                    await _botClient.SendTextMessageAsync(_chat.Id,
-                            (string)info);
-                    npgSqlCommand = new NpgsqlCommand($"SELECT path_video FROM styles WHERE id_style = {update.CallbackQuery.Data}", _connection);
-                    pathPhoto = npgSqlCommand.ExecuteScalar();
-                    using (var fileStream = new FileStream((string)pathPhoto, FileMode.Open, FileAccess.Read, FileShare.Read))
-                    {
-                        await _botClient.SendVideoAsync(
-                            chatId: _chat.Id,
-                            video: new InputFileStream(fileStream),
-                            caption: "Техника плавания баттерфляем"
-                        );
-                    }
-
+                    await Style(update.CallbackQuery.Data, "Техника плавания баттерфляем");
                     break;
+            }
+            _connection.Close();
+        }
+
+        private async Task Style(string dataId, string caption)
+        {
+            _connection.Open();
+            NpgsqlCommand npgSqlCommand = new NpgsqlCommand($"SELECT info FROM styles WHERE id_style = {dataId}", _connection);
+            var info = npgSqlCommand.ExecuteScalar();
+
+            await _botClient.SendTextMessageAsync(_chat.Id,
+                           (string)info);
+            npgSqlCommand = new NpgsqlCommand($"SELECT path_video FROM styles WHERE id_style = {dataId}", _connection);
+            var pathPhoto = npgSqlCommand.ExecuteScalar();
+            using (var fileStream = new FileStream((string)pathPhoto, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                await _botClient.SendVideoAsync(
+                    chatId: _chat.Id,
+                    video: new InputFileStream(fileStream),
+                    caption: caption
+                );
+                fileStream.Close();
             }
             _connection.Close();
         }

@@ -47,37 +47,36 @@ namespace TelegramBot.mainButtons
 
         internal async Task OnAnswer(Update update)
         {
-            _connection.Open();
             switch (update.CallbackQuery.Data)
             {
                 case "1":
-                    NpgsqlCommand npgSqlCommand = new NpgsqlCommand($"SELECT path_table FROM rank WHERE id_rank = {update.CallbackQuery.Data}", _connection);
-                    var pathPhoto = npgSqlCommand.ExecuteScalar();
-                    using (var fileStream = new FileStream((string)pathPhoto, FileMode.Open, FileAccess.Read, FileShare.Read))
-                    {
-                        await _botClient.SendPhotoAsync(
-                            chatId: _chat.Id,
-                            photo: new InputFileStream(fileStream),
-                            caption: "Таблица разрядов для женщин"
-                        );
-                    }
+                    await Table((string)update.CallbackQuery.Data, "Таблица разрядов для женщин");
+
                     await _botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, "");
 
 
                     break;
                 case "2":
-                    npgSqlCommand = new NpgsqlCommand($"SELECT path_table FROM rank WHERE id_rank = {update.CallbackQuery.Data}", _connection);
-                    pathPhoto = npgSqlCommand.ExecuteScalar();
-                    using (var fileStream = new FileStream((string)pathPhoto, FileMode.Open, FileAccess.Read, FileShare.Read))
-                    {
-                        await _botClient.SendPhotoAsync(
-                            chatId: _chat.Id,
-                            photo: new InputFileStream(fileStream),
-                            caption: "Таблица разрядов для мужчин"
-                        );
-                    }
+                    await Table((string)update.CallbackQuery.Data, "Таблица разрядов для мужчин");
+
                     await _botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, "");
                     break;
+            }
+        }
+
+        private async Task Table(string dataId, string caption)
+        {
+            _connection.Open();
+            NpgsqlCommand npgSqlCommand = new NpgsqlCommand($"SELECT path_table FROM rank WHERE id_rank = {dataId}", _connection);
+            var pathPhoto = npgSqlCommand.ExecuteScalar();
+            using (var fileStream = new FileStream((string)pathPhoto, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                await _botClient.SendPhotoAsync(
+                    chatId: _chat.Id,
+                    photo: new InputFileStream(fileStream),
+                    caption: caption
+                );
+                fileStream.Close();
             }
             _connection.Close();
         }
