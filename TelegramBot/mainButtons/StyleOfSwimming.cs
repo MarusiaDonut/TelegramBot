@@ -1,17 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using static System.Net.Mime.MediaTypeNames;
-using Telegram.Bot.Types.ReplyMarkups;
+﻿using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Bot.Types;
 using Telegram.Bot;
-using Telegram.Bot.Polling;
-using Telegram.Bot.Types.Enums;
-using System.IO;
 using Npgsql;
+using Dapper;
 
 namespace TelegramBot.mainButtons
 {
@@ -19,13 +10,11 @@ namespace TelegramBot.mainButtons
     {
         private ITelegramBotClient _botClient;
         private Chat _chat;
-        private readonly NpgsqlConnection _connection;
 
-        public StyleOfSwimming(ITelegramBotClient botClient, Chat chat, NpgsqlConnection connection)
+        public StyleOfSwimming(ITelegramBotClient botClient, Chat chat)
         {
             _botClient = botClient;
             _chat = chat;
-            _connection = connection;
         }
         public async Task HandleStylesOfSwimming()
         {
@@ -58,7 +47,6 @@ namespace TelegramBot.mainButtons
 
         internal async Task OnAnswer(Update update)
         {
-
             switch (update.CallbackQuery.Data)
             {
                 case "1":
@@ -74,20 +62,16 @@ namespace TelegramBot.mainButtons
                     await Style(update.CallbackQuery.Data, "Техника плавания баттерфляем");
                     break;
             }
-            _connection.Close();
         }
 
         private async Task Style(string dataId, string caption)
         {
-            _connection.Open();
-            NpgsqlCommand npgSqlCommand = new NpgsqlCommand($"SELECT info FROM styles WHERE id_style = {dataId}", _connection);
-            var info = npgSqlCommand.ExecuteScalar();
+            var info = GetInfoById(dataId);
 
             await _botClient.SendTextMessageAsync(_chat.Id,
-                           (string)info);
-            npgSqlCommand = new NpgsqlCommand($"SELECT path_video FROM styles WHERE id_style = {dataId}", _connection);
-            var pathPhoto = npgSqlCommand.ExecuteScalar();
-            using (var fileStream = new FileStream((string)pathPhoto, FileMode.Open, FileAccess.Read, FileShare.Read))
+                            info);
+            var pathVideo = GetPathVideoById(dataId);
+            using (var fileStream = new FileStream(pathVideo, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 await _botClient.SendVideoAsync(
                     chatId: _chat.Id,
@@ -96,7 +80,26 @@ namespace TelegramBot.mainButtons
                 );
                 fileStream.Close();
             }
-            _connection.Close();
+        }
+
+        private string GetInfoById(string id)
+        {
+            using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
+            {
+                string sql = $"SELECT info FROM styles WHERE id_style = {id}";
+                var info = conn.QueryFirstOrDefault<Models.Style>(sql, new { id });
+                return info.Info;
+            }
+        }
+
+        private string GetPathVideoById(string id)
+        {
+            using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
+            {
+                string sql = $"SELECT path_video FROM styles WHERE id_style = {id}";
+                var info = conn.QueryFirstOrDefault<Models.Style>(sql, new { id });
+                return info.Path_video;
+            }
         }
     }
 }

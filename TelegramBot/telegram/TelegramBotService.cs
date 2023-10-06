@@ -9,14 +9,15 @@ using System.Xml.Linq;
 using System;
 using TelegramBot.mainButtons;
 using static System.Net.Mime.MediaTypeNames;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using Dapper;
+using TelegramBot.Models;
 
 namespace TelegramBot.telegram
 {
     public class TelegramBotService
     {
-
         private readonly ITelegramBotClient _botClient;
-        private readonly NpgsqlConnection _connection;
 
         private static StyleOfSwimming? _styleOfSwimming;
         private static TablesRank? _tablesRank;
@@ -24,10 +25,11 @@ namespace TelegramBot.telegram
         private static Records? _records;
         private static LocationPool? _locationPool;
 
-        public TelegramBotService(ITelegramBotClient botClient, NpgsqlConnection connection)
+        private Models.User _user;
+
+        public TelegramBotService(ITelegramBotClient botClient)
         {
             _botClient = botClient;
-            _connection = connection;
         }
 
         public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
@@ -37,18 +39,12 @@ namespace TelegramBot.telegram
                 var message = update.Message;
                 switch (update.Type)
                 {
-
                     case UpdateType.Message:
-                        _connection.Open();
-                        Console.WriteLine("Соединение с БД открыто");
 
-                        NpgsqlCommand npgSqlCommand = new NpgsqlCommand($"SELECT id FROM users WHERE id = {message.From.Id}", _connection);
-                        var idUser = npgSqlCommand.ExecuteScalar();
-
-                        if (idUser == null)
+                        _user = GetUserById(message);
+                        if (_user.Id != message.From.Id)
                         {
-                            npgSqlCommand = new NpgsqlCommand($"INSERT INTO users (id, name) VALUES('{message.From.Id}', '{message.From.FirstName}')", _connection);
-                            npgSqlCommand.ExecuteNonQuery();
+                            InsertUser(message);
                         }
 
                         if (message.Text != null)
@@ -59,11 +55,18 @@ namespace TelegramBot.telegram
                             }
                             else
                             {
-                                await HandleCommands(message.Chat.Id, message.Text, message, cancellationToken);
+                                await HandleCommands(message.Text, message, cancellationToken);
                             }
                         }
 
-                        _connection.Close();
+                        if (message.Location != null)
+                        {
+                            string latitude = message.Location.Latitude.ToString().Replace(",", ".");
+                            string longitude = message.Location.Longitude.ToString().Replace(",", ".");
+                            _locationPool = new LocationPool(_botClient, message.Chat);
+                            var namePool = _locationPool.nearestPool(latitude, longitude);
+                            await _locationPool.RemoveRequestContactButton(namePool);
+                        }
                         break;
 
                     case UpdateType.CallbackQuery:
@@ -83,10 +86,6 @@ namespace TelegramBot.telegram
                             await _workoutRecording.OnAnswer(update);
                             _workoutRecording = null;
                         }
-                        else
-                        {
-                            return;
-                        }
                         break;
                 }
             }
@@ -104,7 +103,6 @@ namespace TelegramBot.telegram
                 {
                     new KeyboardButton("Рекорды в мире плавания 🏆"),
                     new KeyboardButton("Таблица разрядов‍ 📄"),
-
                 },
                 new[]
                 {
@@ -116,6 +114,8 @@ namespace TelegramBot.telegram
                     new KeyboardButton("Дневник тренировок 📖")
                 }
             });
+            keyboard.ResizeKeyboard = true;
+
             switch (command)
             {
                 case "/start":
@@ -142,44 +142,49 @@ namespace TelegramBot.telegram
             }
         }
 
-        private async Task HandleCommands(long chatId, string command, Message message, CancellationToken cancellationToken)
+        private async Task HandleCommands(string command, Message message, CancellationToken cancellationToken)
         {
 
             switch (command)
             {
                 case "Рекорды в мире плавания 🏆":
-                    _records = new Records(_botClient, message.Chat, _connection);
+                    _records = new Records(_botClient, message.Chat);
                     await _records.HandleRecords();
                     break;
 
                 case "Таблица разрядов‍ 📄":
-                    _tablesRank = new TablesRank(_botClient, message.Chat, _connection);
+                    _tablesRank = new TablesRank(_botClient, message.Chat);
                     await _tablesRank.HandleTablesRank();
                     break;
 
                 case "Стили плавания 🏊":
-                    _styleOfSwimming = new StyleOfSwimming(_botClient, message.Chat, _connection);
+                    _styleOfSwimming = new StyleOfSwimming(_botClient, message.Chat);
                     await _styleOfSwimming.HandleStylesOfSwimming();
                     break;
 
                 case "‍Найти ближайщий бассейн ❗":
-                    _locationPool = new LocationPool(_botClient, message.Chat, _connection, message);
+                    _locationPool = new LocationPool(_botClient, message.Chat);
                     await _locationPool.HandleLocationPool();
                     break;
 
                 case "Дневник тренировок 📖":
-                    _workoutRecording = new WorkoutRecording(_botClient, message.Chat, _connection, message);
+                    _workoutRecording = new WorkoutRecording(_botClient, message.Chat, message);
                     await _workoutRecording.HandleWorkoutRecording();
                     break;
                 default:
-                    if (message.Text != null && _workoutRecording != null)
+                    if (message.Text != null)
                     {
-                        _workoutRecording = new WorkoutRecording(_botClient, message.Chat, _connection, message);
-
-                        await _workoutRecording.GetTextWorkout(message.Text.ToLower());
-
-                        await _workoutRecording.GetDateWorkout(message.Text.ToLower());
-
+                        _workoutRecording = new WorkoutRecording(_botClient, message.Chat, message);
+                        var idState = GetStateUser(message);
+                        if (idState == 1)
+                        {
+                            _workoutRecording.SendTextWorkout(message.Text.ToLower());
+                            await _botClient.SendTextMessageAsync(chatId: message.Chat, text: "Вы ввели тренировку."); 
+                        }
+                        if (idState == 2)
+                        {
+                            await _workoutRecording.GetTextWorkout(message.Text.ToLower());
+                        }
                         _workoutRecording = null;
                     }
                     break;
@@ -188,8 +193,36 @@ namespace TelegramBot.telegram
 
         public async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
         {
-            // Некоторые действия
-            Console.WriteLine(Newtonsoft.Json.JsonConvert.SerializeObject(exception));
+            await Console.Out.WriteLineAsync(Newtonsoft.Json.JsonConvert.SerializeObject(exception));
+        }
+
+        private Models.User GetUserById(Message message)
+        {
+            using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
+            {
+                string sql = $"SELECT id FROM users WHERE id = {message.From.Id}";
+                var idUser = conn.QueryFirstOrDefault<Models.User>(sql, new { id = message.From.Id });
+                return idUser;
+            }
+        }
+
+        private void InsertUser(Message message)
+        {
+            using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
+            {
+                string sql = $"INSERT INTO users (id, name) VALUES('{message.From.Id}', '{message.From.FirstName}')";
+                conn.Execute(sql, new { id = message.From.Id, name = message.From.FirstName });
+            }
+        }
+
+        private int GetStateUser(Message message)
+        {
+            using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
+            {
+                string sql = $"SELECT state FROM states WHERE id_user = {message.From.Id}";
+                var idState = conn.QueryFirstOrDefault<State>(sql, new { id_user = message.From.Id });
+                return idState.state;
+            }
         }
     }
 }

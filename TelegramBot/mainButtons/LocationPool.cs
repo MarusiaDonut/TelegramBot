@@ -1,13 +1,9 @@
 ﻿using Npgsql;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using Telegram.Bot.Types.ReplyMarkups;
-using System.Threading;
+using Dapper;
 
 namespace TelegramBot.mainButtons
 {
@@ -15,28 +11,58 @@ namespace TelegramBot.mainButtons
     {
         private ITelegramBotClient _botClient;
         private Chat _chat;
-        private readonly NpgsqlConnection _connection;
-        private readonly Message _message;
 
-
-        public LocationPool(ITelegramBotClient botClient, Chat chat, NpgsqlConnection connection, Message message)
+        public LocationPool(ITelegramBotClient botClient, Chat chat)
         {
             _botClient = botClient;
             _chat = chat;
-            _connection = connection;
-            _message = message;
         }
 
         public async Task HandleLocationPool()
         {
-            var list = new List<List<KeyboardButton>>();
-            list.Add(new List<KeyboardButton>() { KeyboardButton.WithRequestLocation("Отправить геолокацию") });
-
+            var list = new List<List<KeyboardButton>>
+            {
+                new List<KeyboardButton>
+                {
+                    KeyboardButton.WithRequestLocation("Отправить геолокацию")
+                }
+            };
             var keyboard = new ReplyKeyboardMarkup(list);
             keyboard.ResizeKeyboard = true;
-
             await _botClient.SendTextMessageAsync(_chat.Id, "Отправьте геолокацию:", replyMarkup: keyboard);
+        }
 
+        internal string nearestPool(string latitude, string longitude)
+        {
+            using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
+            {
+                string sql = $"select name, adress, site, phone from location_pool where ST_Distance(ST_Transform(location, 26986), " +
+                                $"ST_Transform(ST_SetSRID(ST_MakePoint({latitude}, {longitude}), 4326), 26986)) > 3500;";
+                var location = conn.QueryFirstOrDefault<Models.Location>(sql, new { latitude, longitude });
+               return  location.Name;
+            }
+        }
+
+        public async Task RemoveRequestContactButton(string namePool)
+        {
+            await _botClient.SendTextMessageAsync(_chat.Id, $"Самый ближайщий к вам бассейн - {namePool}", replyMarkup: new ReplyKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    new KeyboardButton("Рекорды в мире плавания 🏆"),
+                    new KeyboardButton("Таблица разрядов‍ 📄"),
+
+                },
+                new[]
+                {
+                    new KeyboardButton("Стили плавания 🏊"),
+                    new KeyboardButton("‍Найти ближайщий бассейн ❗"),
+                },
+                new[]
+                {
+                    new KeyboardButton("Дневник тренировок 📖")
+                }
+            })).ConfigureAwait(false);
         }
 
     }

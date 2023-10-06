@@ -14,13 +14,11 @@ namespace TelegramBot.mainButtons
     {
         private ITelegramBotClient _botClient;
         private Chat _chat;
-        private readonly NpgsqlConnection _connection;
 
-        public Records(ITelegramBotClient botClient, Chat chat, NpgsqlConnection connection)
+        public Records(ITelegramBotClient botClient, Chat chat)
         {
             _botClient = botClient;
             _chat = chat;
-            _connection = connection;
         }
 
         public async Task HandleRecords()

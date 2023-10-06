@@ -11,6 +11,8 @@ using System.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Data.Sqlite;
 using TelegramBot.telegram;
+using System.Collections.Generic;
+using TelegramBot.Models;
 
 namespace TelegramBot
 {
@@ -18,11 +20,9 @@ namespace TelegramBot
     {
         private static void Main()
         {
-            string connectionString = "Server=localhost;Port=5432;UserName=postgres;Password=123456;Database=postgres;";
-            NpgsqlConnection npgSqlConnection = new NpgsqlConnection(connectionString);
-
+            var conn = new NpgsqlConnection(Config.SqlConnectionString);
             var bot = new TelegramBotClient("6584101748:AAEcp4nYF0pPN1X3MgpkfnPDGjAmAjrmTH0");
-            TelegramBotService botService = new(bot, npgSqlConnection);
+            TelegramBotService botService = new(bot);
             
             Console.WriteLine("Запущен бот " + bot.GetMeAsync().Result.FirstName);
 

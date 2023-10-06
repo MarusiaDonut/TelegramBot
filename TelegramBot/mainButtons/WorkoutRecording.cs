@@ -1,12 +1,9 @@
 ﻿using Npgsql;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using Telegram.Bot.Types.ReplyMarkups;
+using Dapper;
+using TelegramBot.Models;
 
 namespace TelegramBot.mainButtons
 {
@@ -14,14 +11,12 @@ namespace TelegramBot.mainButtons
     {
         private ITelegramBotClient _botClient;
         private Chat _chat;
-        private readonly NpgsqlConnection _connection;
         private readonly Message _message;
 
-        public WorkoutRecording(ITelegramBotClient botClient, Chat chat, NpgsqlConnection connection, Message message)
+        public WorkoutRecording(ITelegramBotClient botClient, Chat chat,  Message message)
         {
             _botClient = botClient;
             _chat = chat;
-            _connection = connection;
             _message = message;
         }
 
@@ -47,39 +42,60 @@ namespace TelegramBot.mainButtons
 
         internal async Task OnAnswer(Update update)
         {
-            _connection.Open();
             switch (update.CallbackQuery.Data)
             {
                 case "1":
                     await _botClient.SendTextMessageAsync(_chat.Id,
-                            "Введите тренировку одним сообщением.");
+                            "Введите тренировку.");
+                    UpdateStateByIdUser(1);
                     break;
                 case "2":
                     await _botClient.SendTextMessageAsync(_chat.Id,
-                           "Введите дату тренировки в формате ДД месяц");
+                           "Введите дату тренировки в формате ДД.ММ.ГГГГ.");
+                    UpdateStateByIdUser(2);
                     break;
             }
-            _connection.Close();
         }
 
-        internal async Task GetTextWorkout(string message)
+        internal void SendTextWorkout(string message)
         {
-            //await Console.Out.WriteLineAsync(message);
-            var date = DateTime.Now;
-            NpgsqlCommand npgSqlCommand = new NpgsqlCommand($"INSERT INTO workout (id_user, text, date) VALUES('{_message.From.Id}', '{message}', '{date:M}')", _connection);
-            npgSqlCommand.ExecuteNonQuery();
+            var dateTimeNow = DateTime.Now;
+            using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
+            {
+                string sql = $"INSERT INTO workout (id_user, text, date) VALUES('{_message.From.Id}', '{message}', '{dateTimeNow}')";
+                conn.Execute(sql, new { Id_User = _message.From.Id, Text = message, Date = dateTimeNow });
+            }
         }
 
-        internal async Task GetDateWorkout(string date)
+        internal async Task GetTextWorkout(string date)
         {
-            NpgsqlCommand npgSqlCommand = new NpgsqlCommand($"SELECT text FROM workout WHERE id_user = {_message.From.Id} and date = {date}", _connection);
-            var text = npgSqlCommand.ExecuteScalar();
+            var text = GetText(date);
             await _botClient.SendTextMessageAsync(_chat.Id,
-                            (string)text);
-            //await Console.Out.WriteLineAsync((string?)text);
+                            text);
         }
-        
 
+        private string GetText(string date)
+        {
+            using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
+            {
+                var alltext = "";
+                string sql = $"SELECT text FROM workout WHERE id_user = '{_message.From.Id}' and  to_char({date}, 'dd.mm.yyyy')'";
+                var texts = conn.Query<Workout>(sql, new { id = _message.From.Id, date }).ToList();
+                texts.ForEach(text => alltext = String.Join(". ", text.Text));
+                return alltext;
+            }
+
+        }
+
+        private string UpdateStateByIdUser(int state)
+        {
+            using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
+            {
+                string sql = $"Update states set state = '{state}', name = 'Запись тренировки' where id_user = '{_message.From.Id}'";
+                var text = conn.QueryFirstOrDefault<Workout>(sql, new { _message.From.Id, state = state });
+                return text.Text;
+            }
+        }
     }
 }
 
