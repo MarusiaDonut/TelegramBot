@@ -9,7 +9,6 @@ using Microsoft.Extensions.Options;
 using System.Xml.Linq;
 using System.Configuration;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Data.Sqlite;
 using TelegramBot.telegram;
 using System.Collections.Generic;
 using TelegramBot.Models;

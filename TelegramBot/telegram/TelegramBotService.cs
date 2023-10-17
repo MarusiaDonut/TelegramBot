@@ -2,14 +2,8 @@
 using Telegram.Bot;
 using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Bot.Types.Enums;
-using Microsoft.Data.Sqlite;
 using Npgsql;
-using Npgsql.Internal;
-using System.Xml.Linq;
-using System;
 using TelegramBot.mainButtons;
-using static System.Net.Mime.MediaTypeNames;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using Dapper;
 using TelegramBot.Models;
 
@@ -27,6 +21,7 @@ namespace TelegramBot.telegram
 
         private Models.User _user;
 
+        private string _workout = "";
         public TelegramBotService(ITelegramBotClient botClient)
         {
             _botClient = botClient;
@@ -51,11 +46,11 @@ namespace TelegramBot.telegram
                         {
                             if (message.Text.StartsWith("/"))
                             {
-                                await HandleCommandsSlesh(message.Chat.Id, message.Text, message, cancellationToken);
+                                await HandleCommandsSleshAsync(message.Chat.Id, message.Text, message, cancellationToken);
                             }
                             else
                             {
-                                await HandleCommands(message.Text, message, cancellationToken);
+                                await HandleCommandsAsync(message.Text, message, cancellationToken);
                             }
                         }
 
@@ -86,6 +81,11 @@ namespace TelegramBot.telegram
                             await _workoutRecording.OnAnswer(update);
                             _workoutRecording = null;
                         }
+                        if (_records != null)
+                        {
+                            await _records.OnAnswer(update);
+                            _records = null;
+                        }
                         break;
                 }
             }
@@ -95,7 +95,7 @@ namespace TelegramBot.telegram
             }
         }
 
-        private async Task HandleCommandsSlesh(long chatId, string command, Message message, CancellationToken cancellationToken)
+        private async Task HandleCommandsSleshAsync(long chatId, string command, Message message, CancellationToken cancellationToken)
         {
             var keyboard = new ReplyKeyboardMarkup(new[]
             {
@@ -107,7 +107,7 @@ namespace TelegramBot.telegram
                 new[]
                 {
                     new KeyboardButton("Стили плавания 🏊"),
-                    new KeyboardButton("‍Найти ближайщий бассейн ❗"),
+                    new KeyboardButton("‍Найти ближайщий бассейн 📍"),
                 },
                 new[]
                 {
@@ -119,32 +119,28 @@ namespace TelegramBot.telegram
             switch (command)
             {
                 case "/start":
-                case "Вернуться к":
                     await _botClient.SendTextMessageAsync(
                         chatId: chatId,
                         text: $"Добро пожаловать в чат-бот \"Все о плавании\", {message.From.FirstName}!\n" +
                         $"Вам также доступны команды:\n" +
                         $"/start - начало работы с ботом\n" +
-                        $"/help - список доступных команд\n",
+                        $"/info - дополнительная информация\n",
                         replyMarkup: keyboard,
                         cancellationToken: cancellationToken
                     );
                     break;
-                case "/help":
+                case "/info":
                     await _botClient.SendTextMessageAsync(
                         chatId: chatId,
-                        text: "Доступные команды:\n" +
-                              "/start - начало работы с ботом\n" +
-                              "/help - список доступных команд\n",
+                        text: $"Более подробную информацию о плавании можно найти на официальном сайте Всероссийская Федерация Плавания - https://russwimming.ru/",
                         cancellationToken: cancellationToken
                     );
                     break;
             }
         }
 
-        private async Task HandleCommands(string command, Message message, CancellationToken cancellationToken)
+        private async Task HandleCommandsAsync(string command, Message message, CancellationToken cancellationToken)
         {
-
             switch (command)
             {
                 case "Рекорды в мире плавания 🏆":
@@ -162,17 +158,18 @@ namespace TelegramBot.telegram
                     await _styleOfSwimming.HandleStylesOfSwimming();
                     break;
 
-                case "‍Найти ближайщий бассейн ❗":
+                case "‍Найти ближайщий бассейн 📍":
                     _locationPool = new LocationPool(_botClient, message.Chat);
                     await _locationPool.HandleLocationPool();
                     break;
 
                 case "Дневник тренировок 📖":
+                    _workout = "Дневник тренировок";
                     _workoutRecording = new WorkoutRecording(_botClient, message.Chat, message);
                     await _workoutRecording.HandleWorkoutRecording();
                     break;
                 default:
-                    if (message.Text != null)
+                    if (message.Text != null && _workout == "Дневник тренировок")
                     {
                         _workoutRecording = new WorkoutRecording(_botClient, message.Chat, message);
                         var idState = GetStateUser(message);
@@ -219,9 +216,9 @@ namespace TelegramBot.telegram
         {
             using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
             {
-                string sql = $"SELECT state FROM states WHERE id_user = {message.From.Id}";
-                var idState = conn.QueryFirstOrDefault<State>(sql, new { id_user = message.From.Id });
-                return idState.state;
+                string sql = $"SELECT state FROM users WHERE id = {message.From.Id}";
+                var idState = conn.QueryFirstOrDefault<Models.User>(sql, new { Id = message.From.Id });
+                return idState.State;
             }
         }
     }

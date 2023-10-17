@@ -22,19 +22,19 @@ namespace TelegramBot.mainButtons
             {
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData(text: "Вольный стиль", callbackData: "1"),
+                    InlineKeyboardButton.WithCallbackData(text: "Вольный стиль", callbackData: "Вольный"),
                 },
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData(text: "На спине", callbackData: "2"),
+                    InlineKeyboardButton.WithCallbackData(text: "На спине", callbackData: "На спине"),
                 },
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData(text: "Брасс", callbackData: "3"),
+                    InlineKeyboardButton.WithCallbackData(text: "Брасс", callbackData: "Брасс"),
                 },
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData(text: "Баттерфляй", callbackData: "4")
+                    InlineKeyboardButton.WithCallbackData(text: "Баттерфляй", callbackData: "Баттерфляй")
                 }
 
             });
@@ -49,28 +49,28 @@ namespace TelegramBot.mainButtons
         {
             switch (update.CallbackQuery.Data)
             {
-                case "1":
+                case "Вольный":
                     await Style(update.CallbackQuery.Data, "Техника плавания вольным стилем");
                     break;
-                case "2":
+                case "На спине":
                     await Style(update.CallbackQuery.Data, "Техника плавания на спине");
                     break;
-                case "3":
+                case "Брасс":
                     await Style(update.CallbackQuery.Data, "Техника плавания брассом");
                     break;
-                case "4":
+                case "Баттерфляй":
                     await Style(update.CallbackQuery.Data, "Техника плавания баттерфляем");
                     break;
             }
         }
 
-        private async Task Style(string dataId, string caption)
+        private async Task Style(string nameStyle, string caption)
         {
-            var info = GetInfoById(dataId);
+            var info = GetInfoById(nameStyle);
 
             await _botClient.SendTextMessageAsync(_chat.Id,
                             info);
-            var pathVideo = GetPathVideoById(dataId);
+            var pathVideo = GetPathVideoById(nameStyle);
             using (var fileStream = new FileStream(pathVideo, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 await _botClient.SendVideoAsync(
@@ -82,22 +82,22 @@ namespace TelegramBot.mainButtons
             }
         }
 
-        private string GetInfoById(string id)
+        private string GetInfoById(string nameStyle)
         {
             using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
             {
-                string sql = $"SELECT info FROM styles WHERE id_style = {id}";
-                var info = conn.QueryFirstOrDefault<Models.Style>(sql, new { id });
+                string sql = $"SELECT info FROM styles WHERE name = '{nameStyle}'";
+                var info = conn.QueryFirstOrDefault<Models.Style>(sql, new { Name = nameStyle });
                 return info.Info;
             }
         }
 
-        private string GetPathVideoById(string id)
+        private string GetPathVideoById(string nameStyle)
         {
             using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
             {
-                string sql = $"SELECT path_video FROM styles WHERE id_style = {id}";
-                var info = conn.QueryFirstOrDefault<Models.Style>(sql, new { id });
+                string sql = $"SELECT path_video FROM styles WHERE name = '{nameStyle}'";
+                var info = conn.QueryFirstOrDefault<Models.Style>(sql, new { Name = nameStyle });
                 return info.Path_video;
             }
         }

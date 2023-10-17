@@ -1,20 +1,11 @@
 ﻿using Npgsql;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Telegram.Bot.Types;
 using Telegram.Bot;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using Telegram.Bot.Types.ReplyMarkups;
 using Dapper;
-using System.Numerics;
-using TelegramBot.Models;
 
 namespace TelegramBot.mainButtons
 {
-
     internal class TablesRank
     {
         private ITelegramBotClient _botClient;
@@ -34,11 +25,11 @@ namespace TelegramBot.mainButtons
             {
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData(text: "Для женщин", callbackData: "1"),
+                    InlineKeyboardButton.WithCallbackData(text: "Для женщин", callbackData: "женщины"),
                 },
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData(text: "Для мужчин", callbackData: "2"),
+                    InlineKeyboardButton.WithCallbackData(text: "Для мужчин", callbackData: "мужчины"),
                 }
             });
 
@@ -52,20 +43,20 @@ namespace TelegramBot.mainButtons
         {
             switch (update.CallbackQuery.Data)
             {
-                case "1":
-                    _table.Id = update.CallbackQuery.Data;
-                    await Table(_table.Id, "Таблица разрядов для женщин");
+                case "женщины":
+                    _table.Male = update.CallbackQuery.Data;
+                    await Table(_table.Male, "Таблица разрядов для женщин");
                     break;
-                case "2":
-                    _table.Id = update.CallbackQuery.Data;
-                    await Table(_table.Id, "Таблица разрядов для мужчин");
+                case "мужчины":
+                    _table.Male = update.CallbackQuery.Data;
+                    await Table(_table.Male, "Таблица разрядов для мужчин");
                     break;
             }
         }
 
-        private async Task Table(string idState, string caption)
+        private async Task Table(string male, string caption)
         {
-            var tablePath = GetTableById(idState);
+            var tablePath = GetTableById(male);
             using (var fileStream = new FileStream(tablePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 await _botClient.SendPhotoAsync(
@@ -77,12 +68,12 @@ namespace TelegramBot.mainButtons
             }
         }
 
-        private string GetTableById(string id)
+        private string GetTableById(string male)
         {
             using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
             {
-                string sql = $"SELECT path_table FROM rank WHERE id = {id}";
-                var pathPhoto = conn.QueryFirstOrDefault<Models.Table>(sql, new { id });
+                string sql = $"SELECT path_table FROM rank WHERE male = '{male}'";
+                var pathPhoto = conn.QueryFirstOrDefault<Models.Table>(sql, new { Male = male });
                 return pathPhoto.Path_table;
             }
         }

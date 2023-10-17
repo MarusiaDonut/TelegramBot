@@ -37,32 +37,40 @@ namespace TelegramBot.mainButtons
             using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
             {
                 string sql = $"select name, adress, site, phone from location_pool where ST_Distance(ST_Transform(location, 26986), " +
-                                $"ST_Transform(ST_SetSRID(ST_MakePoint({latitude}, {longitude}), 4326), 26986)) > 3500;";
+                                $"ST_Transform(ST_SetSRID(ST_MakePoint({latitude}, {longitude}), 4326), 26986)) < 3000;";
                 var location = conn.QueryFirstOrDefault<Models.Location>(sql, new { latitude, longitude });
-               return  location.Name;
+                if (location.Name != null)
+                {
+                    return $"Ближайщий к вам бассейн: {location.Name} \nАдрес: {location.Adress} \nТелефон для связи: {location.Phone}";
+                }
+                else
+                {
+                    return "В радиусе 3 километров не найден ни один бассейн.";
+                }
             }
         }
 
         public async Task RemoveRequestContactButton(string namePool)
         {
-            await _botClient.SendTextMessageAsync(_chat.Id, $"Самый ближайщий к вам бассейн - {namePool}", replyMarkup: new ReplyKeyboardMarkup(new[]
+            var keyboard = new ReplyKeyboardMarkup(new[]
             {
                 new[]
                 {
                     new KeyboardButton("Рекорды в мире плавания 🏆"),
                     new KeyboardButton("Таблица разрядов‍ 📄"),
-
                 },
                 new[]
                 {
                     new KeyboardButton("Стили плавания 🏊"),
-                    new KeyboardButton("‍Найти ближайщий бассейн ❗"),
+                    new KeyboardButton("‍Найти ближайщий бассейн 📍"),
                 },
                 new[]
                 {
                     new KeyboardButton("Дневник тренировок 📖")
                 }
-            })).ConfigureAwait(false);
+            });
+            keyboard.ResizeKeyboard = true;
+            await _botClient.SendTextMessageAsync(_chat.Id, $"{namePool}", replyMarkup: keyboard).ConfigureAwait(false);
         }
 
     }

@@ -26,11 +26,11 @@ namespace TelegramBot.mainButtons
             {
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData(text: "Записать тренировку", callbackData: "1"),
+                    InlineKeyboardButton.WithCallbackData(text: "Записать тренировку", callbackData: "send"),
                 },
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData(text: "Посмотреть запись тренировки", callbackData: "2"),
+                    InlineKeyboardButton.WithCallbackData(text: "Посмотреть запись тренировки", callbackData: "check"),
                 }
             });
 
@@ -44,12 +44,12 @@ namespace TelegramBot.mainButtons
         {
             switch (update.CallbackQuery.Data)
             {
-                case "1":
+                case "send":
                     await _botClient.SendTextMessageAsync(_chat.Id,
                             "Введите тренировку.");
                     UpdateStateByIdUser(1);
                     break;
-                case "2":
+                case "check":
                     await _botClient.SendTextMessageAsync(_chat.Id,
                            "Введите дату тренировки в формате ДД.ММ.ГГГГ.");
                     UpdateStateByIdUser(2);
@@ -76,24 +76,36 @@ namespace TelegramBot.mainButtons
 
         private string GetText(string date)
         {
-            using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
+            try
             {
-                var alltext = "";
-                string sql = $"SELECT text FROM workout WHERE id_user = '{_message.From.Id}' and  to_char({date}, 'dd.mm.yyyy')'";
-                var texts = conn.Query<Workout>(sql, new { id = _message.From.Id, date }).ToList();
-                texts.ForEach(text => alltext = String.Join(". ", text.Text));
-                return alltext;
+                using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
+                {
+                    var alltext = "";
+                    string sql = $"SELECT text FROM workout WHERE id_user = '{_message.From.Id}' and  date = '{date}'";
+                    var texts = conn.Query<Workout>(sql, new { Id_User = _message.From.Id, Date = date }).ToList();
+                    if (texts.Count != 0)
+                    {
+                        texts.ForEach(text => alltext += text.Text + "\n \n");
+                        return alltext;
+                    }
+                    else
+                    {
+                        return $"Вы не записывали тренировку {date}";
+                    }
+                }
             }
-
+            catch
+            {
+                return "Вы ввели дату в неверном формате. Повторите попытку ввода формата в виде ДД.ММ.ГГГГ";
+            }
         }
 
-        private string UpdateStateByIdUser(int state)
+        private void UpdateStateByIdUser(int state)
         {
             using (var conn = new NpgsqlConnection(Config.SqlConnectionString))
             {
-                string sql = $"Update states set state = '{state}', name = 'Запись тренировки' where id_user = '{_message.From.Id}'";
-                var text = conn.QueryFirstOrDefault<Workout>(sql, new { _message.From.Id, state = state });
-                return text.Text;
+                string sql = $"Update users set state = '{state}', state_name = 'Запись тренировки' where id = '{_message.From.Id}'";
+                conn.QueryFirstOrDefault<Models.User>(sql, new { Id = _message.From.Id, State = state });
             }
         }
     }
