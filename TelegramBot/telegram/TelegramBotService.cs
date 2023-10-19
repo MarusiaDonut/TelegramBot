@@ -22,6 +22,24 @@ namespace TelegramBot.telegram
         private Models.User _user;
 
         private string _workout = "";
+
+        private ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    new KeyboardButton("Рекорды в мире плавания 🏆"),
+                    new KeyboardButton("Таблица разрядов‍ 📄"),
+                },
+                new[]
+                {
+                    new KeyboardButton("Стили плавания 🏊"),
+                    new KeyboardButton("‍‍Найти ближайший бассейн 📍"),
+                },
+                new[]
+                {
+                    new KeyboardButton("Дневник тренировок 📖")
+                }
+            });
         public TelegramBotService(ITelegramBotClient botClient)
         {
             _botClient = botClient;
@@ -97,23 +115,7 @@ namespace TelegramBot.telegram
 
         private async Task HandleCommandsSleshAsync(long chatId, string command, Message message, CancellationToken cancellationToken)
         {
-            var keyboard = new ReplyKeyboardMarkup(new[]
-            {
-                new[]
-                {
-                    new KeyboardButton("Рекорды в мире плавания 🏆"),
-                    new KeyboardButton("Таблица разрядов‍ 📄"),
-                },
-                new[]
-                {
-                    new KeyboardButton("Стили плавания 🏊"),
-                    new KeyboardButton("‍Найти ближайщий бассейн 📍"),
-                },
-                new[]
-                {
-                    new KeyboardButton("Дневник тренировок 📖")
-                }
-            });
+            
             keyboard.ResizeKeyboard = true;
 
             switch (command)
@@ -158,7 +160,7 @@ namespace TelegramBot.telegram
                     await _styleOfSwimming.HandleStylesOfSwimming();
                     break;
 
-                case "‍Найти ближайщий бассейн 📍":
+                case "‍‍Найти ближайший бассейн 📍":
                     _locationPool = new LocationPool(_botClient, message.Chat);
                     await _locationPool.HandleLocationPool();
                     break;
@@ -167,6 +169,14 @@ namespace TelegramBot.telegram
                     _workout = "Дневник тренировок";
                     _workoutRecording = new WorkoutRecording(_botClient, message.Chat, message);
                     await _workoutRecording.HandleWorkoutRecording();
+                    break;
+                case "На главную":
+                    await _botClient.SendTextMessageAsync(
+                        chatId: message.Chat.Id,
+                        text: $"Вы вышли из режима определения геолокации.",
+                        replyMarkup: keyboard,
+                        cancellationToken: cancellationToken
+                    ).ConfigureAwait(false);
                     break;
                 default:
                     if (message.Text != null && _workout == "Дневник тренировок")

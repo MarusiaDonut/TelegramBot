@@ -25,6 +25,10 @@ namespace TelegramBot.mainButtons
                 new List<KeyboardButton>
                 {
                     KeyboardButton.WithRequestLocation("Отправить геолокацию")
+                },
+                new List<KeyboardButton>
+                {
+                   new KeyboardButton("На главную")
                 }
             };
             var keyboard = new ReplyKeyboardMarkup(list);
@@ -41,7 +45,7 @@ namespace TelegramBot.mainButtons
                 var location = conn.QueryFirstOrDefault<Models.Location>(sql, new { latitude, longitude });
                 if (location.Name != null)
                 {
-                    return $"Ближайщий к вам бассейн: {location.Name} \nАдрес: {location.Adress} \nТелефон для связи: {location.Phone}";
+                    return $"Ближайший к вам бассейн: {location.Name} \nАдрес: {location.Adress} \nТелефон для связи: {location.Phone} \nСайт: {location.Site}";
                 }
                 else
                 {
@@ -62,7 +66,7 @@ namespace TelegramBot.mainButtons
                 new[]
                 {
                     new KeyboardButton("Стили плавания 🏊"),
-                    new KeyboardButton("‍Найти ближайщий бассейн 📍"),
+                    new KeyboardButton("‍Найти ближайший бассейн 📍"),
                 },
                 new[]
                 {

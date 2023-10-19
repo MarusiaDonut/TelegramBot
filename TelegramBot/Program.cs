@@ -20,7 +20,7 @@ namespace TelegramBot
         private static void Main()
         {
             var conn = new NpgsqlConnection(Config.SqlConnectionString);
-            var bot = new TelegramBotClient("6584101748:AAEcp4nYF0pPN1X3MgpkfnPDGjAmAjrmTH0");
+            var bot = new TelegramBotClient(Config.TelegramBotToken);
             TelegramBotService botService = new(bot);
             
             Console.WriteLine("Запущен бот " + bot.GetMeAsync().Result.FirstName);
@@ -29,7 +29,7 @@ namespace TelegramBot
             var cancellationToken = cts.Token;
             var receiverOptions = new ReceiverOptions
             {
-                AllowedUpdates = { }, // receive all update types
+                AllowedUpdates = { },
             };
             bot.StartReceiving(
                botService.HandleUpdateAsync,
